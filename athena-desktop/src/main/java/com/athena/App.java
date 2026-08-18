@@ -1,8 +1,20 @@
 package com.athena;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.data.MutableDataSet;
@@ -17,7 +29,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.TextArea;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -26,19 +40,6 @@ import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 public class App extends Application {
 
@@ -88,7 +89,7 @@ public class App extends Application {
 
     private WebEngine chatEngine;
 
-    private TextField input;
+    private TextArea input;
 
     private Button sendButton;
 
@@ -139,16 +140,17 @@ public class App extends Application {
         modelSelector.setValue(
                 selectedModel);
 
-        modelSelector.setOnAction(event -> {
+        modelSelector.setOnAction(
+                event -> {
 
-            String model = modelSelector.getValue();
+                    String model = modelSelector.getValue();
 
-            if (model != null &&
-                    !model.isBlank()) {
+                    if (model != null &&
+                            !model.isBlank()) {
 
-                selectedModel = model;
-            }
-        });
+                        selectedModel = model;
+                    }
+                });
 
         HBox header = new HBox(
                 20,
@@ -215,23 +217,53 @@ public class App extends Application {
         attachmentContainer = new VBox(5);
 
         attachmentContainer.setPadding(
-                new Insets(5, 10, 0, 10));
+                new Insets(
+                        5,
+                        10,
+                        0,
+                        10));
 
         // =================================================
-        // Input
+        // Multiline input
         // =================================================
 
-        input = new TextField();
+        input = new TextArea();
 
         input.setPromptText(
                 "Type a message...");
 
+        input.setWrapText(
+                true);
+
+        input.setPrefRowCount(
+                3);
+
+        input.setMaxHeight(
+                120);
+
+        // =================================================
+        // ATTACH BUTTON
+        //
+        // This was missing in the previous code.
+        // =================================================
+
         attachButton = new Button("📎 Attach");
+
+        attachButton.setPrefWidth(
+                90);
+
+        // =================================================
+        // SEND BUTTON
+        // =================================================
 
         sendButton = new Button("Send");
 
         sendButton.setDefaultButton(
                 true);
+
+        // =================================================
+        // Input area
+        // =================================================
 
         HBox inputArea = new HBox(
                 10,
@@ -242,6 +274,9 @@ public class App extends Application {
         HBox.setHgrow(
                 input,
                 Priority.ALWAYS);
+
+        inputArea.setAlignment(
+                Pos.BOTTOM_RIGHT);
 
         inputArea.setPadding(
                 new Insets(10));
@@ -274,8 +309,25 @@ public class App extends Application {
         sendButton.setOnAction(
                 event -> sendMessage());
 
-        input.setOnAction(
-                event -> sendMessage());
+        // =================================================
+        // Multiline keyboard behavior
+        //
+        // Enter -> newline
+        // Ctrl + Enter -> send
+        // =================================================
+
+        input.addEventFilter(
+                KeyEvent.KEY_PRESSED,
+                event -> {
+
+                    if (event.getCode() == KeyCode.ENTER &&
+                            event.isControlDown()) {
+
+                        sendMessage();
+
+                        event.consume();
+                    }
+                });
 
         // =================================================
         // New Chat
@@ -381,47 +433,59 @@ public class App extends Application {
         chooser.setTitle(
                 "Attach files to Athena");
 
-        chooser.getExtensionFilters().addAll(
+        chooser.getExtensionFilters()
+                .addAll(
 
-                new FileChooser.ExtensionFilter(
-                        "All Files",
-                        "*.*"),
+                        new FileChooser.ExtensionFilter(
+                                "All Files",
+                                "*.*"),
 
-                new FileChooser.ExtensionFilter(
-                        "Text Files",
-                        "*.txt",
-                        "*.md",
-                        "*.json",
-                        "*.xml",
-                        "*.csv",
-                        "*.log"),
+                        new FileChooser.ExtensionFilter(
+                                "Text Files",
+                                "*.txt",
+                                "*.md",
+                                "*.json",
+                                "*.xml",
+                                "*.csv",
+                                "*.log"),
 
-                new FileChooser.ExtensionFilter(
-                        "Code Files",
-                        "*.java",
-                        "*.js",
-                        "*.jsx",
-                        "*.ts",
-                        "*.tsx",
-                        "*.py",
-                        "*.c",
-                        "*.cpp",
-                        "*.h",
-                        "*.cs",
-                        "*.go",
-                        "*.rs",
-                        "*.html",
-                        "*.css"),
+                        new FileChooser.ExtensionFilter(
+                                "Code Files",
+                                "*.java",
+                                "*.js",
+                                "*.jsx",
+                                "*.ts",
+                                "*.tsx",
+                                "*.py",
+                                "*.c",
+                                "*.cpp",
+                                "*.h",
+                                "*.cs",
+                                "*.go",
+                                "*.rs",
+                                "*.html",
+                                "*.css"),
 
-                new FileChooser.ExtensionFilter(
-                        "Images",
-                        "*.png",
-                        "*.jpg",
-                        "*.jpeg",
-                        "*.gif",
-                        "*.webp"));
+                        new FileChooser.ExtensionFilter(
+                                "Images",
+                                "*.png",
+                                "*.jpg",
+                                "*.jpeg",
+                                "*.gif",
+                                "*.webp"),
 
-        List<java.io.File> selectedFiles = chooser.showOpenMultipleDialog(stage);
+                        new FileChooser.ExtensionFilter(
+                                "Documents",
+                                "*.pdf",
+                                "*.doc",
+                                "*.docx",
+                                "*.xls",
+                                "*.xlsx",
+                                "*.ppt",
+                                "*.pptx"));
+
+        List<java.io.File> selectedFiles = chooser.showOpenMultipleDialog(
+                stage);
 
         if (selectedFiles == null ||
                 selectedFiles.isEmpty()) {
@@ -490,79 +554,86 @@ public class App extends Application {
                     HttpResponse.BodyHandlers
                             .ofString())
 
-                    .thenAccept(response -> {
+                    .thenAccept(
+                            response -> {
 
-                        Platform.runLater(() -> {
+                                Platform.runLater(
+                                        () -> {
 
-                            attachButton.setDisable(
-                                    false);
+                                            attachButton
+                                                    .setDisable(
+                                                            false);
 
-                            if (response.statusCode() == 200) {
+                                            if (response
+                                                    .statusCode() == 200) {
 
-                                try {
+                                                try {
 
-                                    AttachmentResponse result = objectMapper.readValue(
-                                            response.body(),
-                                            AttachmentResponse.class);
+                                                    AttachmentResponse result = objectMapper
+                                                            .readValue(
+                                                                    response.body(),
+                                                                    AttachmentResponse.class);
 
-                                    attachments.add(
-                                            new AttachmentItem(
-                                                    result.id(),
-                                                    result.fileName(),
-                                                    result.contentType(),
-                                                    result.size()));
+                                                    attachments.add(
+                                                            new AttachmentItem(
+                                                                    result.id(),
+                                                                    result.fileName(),
+                                                                    result.contentType(),
+                                                                    result.size()));
 
-                                    refreshAttachmentList();
+                                                    refreshAttachmentList();
 
-                                    status.setText(
-                                            "Attached: " +
-                                                    result.fileName());
+                                                    status.setText(
+                                                            "Attached: " +
+                                                                    result.fileName());
 
-                                } catch (Exception e) {
+                                                } catch (Exception e) {
 
-                                    addErrorMessage(
-                                            "Invalid attachment response.\n\n" +
-                                                    e.getMessage());
+                                                    addErrorMessage(
+                                                            "Invalid attachment response.\n\n" +
+                                                                    e.getMessage());
 
-                                    status.setText(
-                                            "Attachment Error");
-                                }
+                                                    status.setText(
+                                                            "Attachment Error");
+                                                }
 
-                            } else {
+                                            } else {
 
-                                addErrorMessage(
-                                        "File upload failed.\n\n" +
-                                                "HTTP " +
-                                                response.statusCode() +
-                                                "\n\n" +
-                                                response.body());
+                                                addErrorMessage(
+                                                        "File upload failed.\n\n" +
+                                                                "HTTP " +
+                                                                response.statusCode() +
+                                                                "\n\n" +
+                                                                response.body());
 
-                                status.setText(
-                                        "Attachment Upload Failed");
-                            }
-                        });
+                                                status.setText(
+                                                        "Attachment Upload Failed");
+                                            }
+                                        });
+                            })
 
-                    })
+                    .exceptionally(
+                            error -> {
 
-                    .exceptionally(error -> {
+                                Platform.runLater(
+                                        () -> {
 
-                        Platform.runLater(() -> {
+                                            attachButton
+                                                    .setDisable(
+                                                            false);
 
-                            attachButton.setDisable(
-                                    false);
+                                            addErrorMessage(
+                                                    "Could not upload file:\n\n" +
+                                                            file.getFileName() +
+                                                            "\n\n" +
+                                                            error.getMessage());
 
-                            addErrorMessage(
-                                    "Could not upload file:\n\n" +
-                                            file.getFileName() +
-                                            "\n\n" +
-                                            error.getMessage());
+                                            status.setText(
+                                                    "Attachment Upload Failed");
+                                        });
 
-                            status.setText(
-                                    "Attachment Upload Failed");
-                        });
-
-                        return null;
-                    });
+                                return null;
+                            });
 
         } catch (Exception e) {
 
@@ -581,7 +652,7 @@ public class App extends Application {
     }
 
     // =====================================================
-    // Build multipart request body
+    // Multipart request body
     // =====================================================
 
     private byte[] buildMultipartBody(
@@ -593,7 +664,9 @@ public class App extends Application {
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
-        String header = "--" + boundary + "\r\n" +
+        String header = "--" +
+                boundary +
+                "\r\n" +
                 "Content-Disposition: form-data; " +
                 "name=\"file\"; filename=\"" +
                 file.getFileName() +
@@ -695,12 +768,14 @@ public class App extends Application {
 
             return String.format(
                     "%.1f MB",
-                    size / (1024.0 * 1024.0));
+                    size /
+                            (1024.0 * 1024.0));
         }
 
         return String.format(
                 "%.1f GB",
-                size / (1024.0 * 1024.0 * 1024.0));
+                size /
+                        (1024.0 * 1024.0 * 1024.0));
     }
 
     // =====================================================
@@ -723,7 +798,8 @@ public class App extends Application {
         String message = input.getText().trim();
 
         /*
-         * Allow sending an attachment without text.
+         * Allow sending an attachment
+         * without text.
          */
         if (message.isEmpty() &&
                 attachments.isEmpty()) {
@@ -813,63 +889,64 @@ public class App extends Application {
                                     .ofString(json))
                     .build();
 
-            // -------------------------------------------------
-            // Send asynchronously
-            // -------------------------------------------------
-
             httpClient.sendAsync(
                     request,
                     HttpResponse.BodyHandlers
                             .ofString())
 
-                    .thenAccept(response -> {
+                    .thenAccept(
+                            response -> {
 
-                        Platform.runLater(() -> {
+                                Platform.runLater(
+                                        () -> {
 
-                            sendButton.setDisable(
-                                    false);
+                                            sendButton
+                                                    .setDisable(
+                                                            false);
 
-                            attachButton.setDisable(
-                                    false);
+                                            attachButton
+                                                    .setDisable(
+                                                            false);
 
-                            modelSelector.setDisable(
-                                    false);
+                                            modelSelector
+                                                    .setDisable(
+                                                            false);
 
-                            handleChatResponse(
-                                    response);
+                                            handleChatResponse(
+                                                    response);
 
-                            /*
-                             * The attachment IDs have now
-                             * been sent to the server.
-                             */
-                            clearAttachments();
-                        });
+                                            clearAttachments();
+                                        });
+                            })
 
-                    })
+                    .exceptionally(
+                            error -> {
 
-                    .exceptionally(error -> {
+                                Platform.runLater(
+                                        () -> {
 
-                        Platform.runLater(() -> {
+                                            sendButton
+                                                    .setDisable(
+                                                            false);
 
-                            sendButton.setDisable(
-                                    false);
+                                            attachButton
+                                                    .setDisable(
+                                                            false);
 
-                            attachButton.setDisable(
-                                    false);
+                                            modelSelector
+                                                    .setDisable(
+                                                            false);
 
-                            modelSelector.setDisable(
-                                    false);
+                                            addErrorMessage(
+                                                    "Could not connect to Athena Server.\n\n" +
+                                                            error.getMessage());
 
-                            addErrorMessage(
-                                    "Could not connect to Athena Server.\n\n" +
-                                            error.getMessage());
+                                            status.setText(
+                                                    "Disconnected from Athena Server");
+                                        });
 
-                            status.setText(
-                                    "Disconnected from Athena Server");
-                        });
-
-                        return null;
-                    });
+                                return null;
+                            });
 
         } catch (Exception e) {
 
@@ -963,478 +1040,241 @@ public class App extends Application {
                         }
 
                         body {
-
                             margin: 0;
-
                             padding: 20px;
-
                             background: #ffffff;
-
                             color: #1e293b;
-
                             font-family:
                                 "Segoe UI",
                                 Arial,
                                 sans-serif;
-
                             font-size: 14px;
-
                             line-height: 1.55;
                         }
 
                         #chat {
-
                             display: flex;
-
                             flex-direction: column;
-
                             gap: 18px;
-
                             width: 100%;
                         }
 
                         .message {
-
                             display: flex;
-
                             width: 100%;
                         }
 
                         .user {
-
                             justify-content:
                                 flex-end;
                         }
 
                         .assistant {
-
                             justify-content:
                                 flex-start;
                         }
 
                         .system {
-
                             justify-content:
                                 center;
                         }
 
                         .user .bubble {
-
                             max-width: 70%;
-
-                            padding:
-                                10px 14px;
-
-                            background:
-                                #dbeafe;
-
-                            color:
-                                #1e293b;
-
-                            border-radius:
-                                14px;
-
-                            border-bottom-right-radius:
-                                4px;
-
-                            white-space:
-                                pre-wrap;
-
-                            word-wrap:
-                                break-word;
+                            padding: 10px 14px;
+                            background: #dbeafe;
+                            color: #1e293b;
+                            border-radius: 14px;
+                            border-bottom-right-radius: 4px;
+                            white-space: pre-wrap;
+                            word-wrap: break-word;
                         }
 
                         .assistant-container {
-
                             max-width: 75%;
-
                             min-width: 0;
                         }
 
                         .sender {
-
-                            font-size:
-                                11px;
-
-                            font-weight:
-                                bold;
-
-                            color:
-                                #64748b;
-
-                            margin-bottom:
-                                5px;
+                            font-size: 11px;
+                            font-weight: bold;
+                            color: #64748b;
+                            margin-bottom: 5px;
                         }
 
                         .assistant .bubble {
-
-                            padding:
-                                14px 16px;
-
-                            background:
-                                #f1f5f9;
-
-                            color:
-                                #1e293b;
-
-                            border-radius:
-                                14px;
-
-                            border-bottom-left-radius:
-                                4px;
-
-                            word-wrap:
-                                break-word;
-
-                            overflow-wrap:
-                                break-word;
+                            padding: 14px 16px;
+                            background: #f1f5f9;
+                            color: #1e293b;
+                            border-radius: 14px;
+                            border-bottom-left-radius: 4px;
+                            word-wrap: break-word;
+                            overflow-wrap: break-word;
                         }
 
                         .assistant .bubble p {
-
-                            margin-top:
-                                0;
-
-                            margin-bottom:
-                                14px;
+                            margin-top: 0;
+                            margin-bottom: 14px;
                         }
 
                         .assistant .bubble p:last-child {
-
-                            margin-bottom:
-                                0;
+                            margin-bottom: 0;
                         }
 
                         .assistant .bubble h1,
                         .assistant .bubble h2,
                         .assistant .bubble h3,
                         .assistant .bubble h4 {
-
-                            color:
-                                #0f172a;
-
-                            margin-top:
-                                18px;
-
-                            margin-bottom:
-                                10px;
-
-                            line-height:
-                                1.3;
+                            color: #0f172a;
+                            margin-top: 18px;
+                            margin-bottom: 10px;
+                            line-height: 1.3;
                         }
 
                         .assistant .bubble h1 {
-                            font-size:
-                                24px;
+                            font-size: 24px;
                         }
 
                         .assistant .bubble h2 {
-                            font-size:
-                                20px;
+                            font-size: 20px;
                         }
 
                         .assistant .bubble h3 {
-                            font-size:
-                                17px;
+                            font-size: 17px;
                         }
 
                         .assistant .bubble h4 {
-                            font-size:
-                                15px;
+                            font-size: 15px;
                         }
 
                         .assistant .bubble ul,
                         .assistant .bubble ol {
-
-                            margin-top:
-                                6px;
-
-                            margin-bottom:
-                                14px;
-
-                            padding-left:
-                                25px;
+                            margin-top: 6px;
+                            margin-bottom: 14px;
+                            padding-left: 25px;
                         }
 
                         .assistant .bubble li {
-
-                            margin-bottom:
-                                5px;
+                            margin-bottom: 5px;
                         }
 
                         .assistant .bubble code {
-
                             font-family:
                                 Consolas,
                                 "Courier New",
                                 monospace;
-
-                            font-size:
-                                13px;
-
-                            background:
-                                #e2e8f0;
-
-                            color:
-                                #0f172a;
-
-                            padding:
-                                2px 5px;
-
-                            border-radius:
-                                5px;
+                            font-size: 13px;
+                            background: #e2e8f0;
+                            color: #0f172a;
+                            padding: 2px 5px;
+                            border-radius: 5px;
                         }
 
                         .code-container {
-
-                            margin-top:
-                                12px;
-
-                            margin-bottom:
-                                14px;
-
-                            border-radius:
-                                9px;
-
-                            overflow:
-                                hidden;
-
-                            background:
-                                #0f172a;
-
-                            border:
-                                1px solid #1e293b;
+                            margin-top: 12px;
+                            margin-bottom: 14px;
+                            border-radius: 9px;
+                            overflow: hidden;
+                            background: #0f172a;
+                            border: 1px solid #1e293b;
                         }
 
                         .code-header {
-
-                            display:
-                                flex;
-
-                            align-items:
-                                center;
-
-                            justify-content:
-                                space-between;
-
-                            padding:
-                                7px 10px;
-
-                            background:
-                                #1e293b;
-
-                            color:
-                                #cbd5e1;
-
-                            font-size:
-                                11px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            padding: 7px 10px;
+                            background: #1e293b;
+                            color: #cbd5e1;
+                            font-size: 11px;
                         }
 
                         .code-language {
-
-                            font-weight:
-                                bold;
-
-                            text-transform:
-                                uppercase;
+                            font-weight: bold;
+                            text-transform: uppercase;
                         }
 
                         .copy-button {
-
-                            border:
-                                1px solid #475569;
-
-                            background:
-                                #334155;
-
-                            color:
-                                #e2e8f0;
-
-                            border-radius:
-                                5px;
-
-                            padding:
-                                3px 9px;
-
-                            font-size:
-                                11px;
-
-                            cursor:
-                                pointer;
+                            border: 1px solid #475569;
+                            background: #334155;
+                            color: #e2e8f0;
+                            border-radius: 5px;
+                            padding: 3px 9px;
+                            font-size: 11px;
+                            cursor: pointer;
                         }
 
                         .copy-button:hover {
-
-                            background:
-                                #475569;
+                            background: #475569;
                         }
 
                         .code-content {
-
-                            margin:
-                                0;
-
-                            padding:
-                                14px;
-
-                            overflow-x:
-                                auto;
-
-                            white-space:
-                                pre;
-
-                            color:
-                                #e2e8f0;
-
-                            background:
-                                #0f172a;
-
+                            margin: 0;
+                            padding: 14px;
+                            overflow-x: auto;
+                            white-space: pre;
+                            color: #e2e8f0;
+                            background: #0f172a;
                             font-family:
                                 Consolas,
                                 "Courier New",
                                 monospace;
-
-                            font-size:
-                                13px;
-
-                            line-height:
-                                1.5;
+                            font-size: 13px;
+                            line-height: 1.5;
                         }
 
                         .assistant .bubble blockquote {
-
-                            margin:
-                                10px 0;
-
-                            padding-left:
-                                12px;
-
-                            border-left:
-                                4px solid #94a3b8;
-
-                            color:
-                                #475569;
+                            margin: 10px 0;
+                            padding-left: 12px;
+                            border-left: 4px solid #94a3b8;
+                            color: #475569;
                         }
 
                         .assistant .bubble table {
-
-                            border-collapse:
-                                collapse;
-
-                            width:
-                                100%;
-
-                            margin:
-                                12px 0;
-
-                            font-size:
-                                13px;
+                            border-collapse: collapse;
+                            width: 100%;
+                            margin: 12px 0;
+                            font-size: 13px;
                         }
 
                         .assistant .bubble th,
                         .assistant .bubble td {
-
-                            border:
-                                1px solid #cbd5e1;
-
-                            padding:
-                                7px 9px;
-
-                            text-align:
-                                left;
+                            border: 1px solid #cbd5e1;
+                            padding: 7px 9px;
+                            text-align: left;
                         }
 
                         .assistant .bubble th {
-
-                            background:
-                                #e2e8f0;
-
-                            font-weight:
-                                bold;
+                            background: #e2e8f0;
+                            font-weight: bold;
                         }
 
                         .assistant .bubble a {
-
-                            color:
-                                #2563eb;
-
-                            text-decoration:
-                                none;
+                            color: #2563eb;
+                            text-decoration: none;
                         }
 
                         .assistant .bubble a:hover {
-
-                            text-decoration:
-                                underline;
+                            text-decoration: underline;
                         }
 
                         .assistant .bubble hr {
-
-                            border:
-                                none;
-
-                            border-top:
-                                1px solid #cbd5e1;
-
-                            margin:
-                                16px 0;
+                            border: none;
+                            border-top: 1px solid #cbd5e1;
+                            margin: 16px 0;
                         }
 
                         .system .bubble {
-
-                            color:
-                                #64748b;
-
-                            font-size:
-                                13px;
-
-                            padding:
-                                5px;
-
-                            white-space:
-                                pre-wrap;
+                            color: #64748b;
+                            font-size: 13px;
+                            padding: 5px;
+                            white-space: pre-wrap;
                         }
 
                         .error .bubble {
-
-                            background:
-                                #fee2e2;
-
-                            color:
-                                #991b1b;
-
-                            border:
-                                1px solid #fecaca;
-                        }
-
-                        ::-webkit-scrollbar {
-
-                            width:
-                                10px;
-
-                            height:
-                                10px;
-                        }
-
-                        ::-webkit-scrollbar-track {
-
-                            background:
-                                #f8fafc;
-                        }
-
-                        ::-webkit-scrollbar-thumb {
-
-                            background:
-                                #cbd5e1;
-
-                            border-radius:
-                                5px;
-                        }
-
-                        ::-webkit-scrollbar-thumb:hover {
-
-                            background:
-                                #94a3b8;
+                            background: #fee2e2;
+                            color: #991b1b;
+                            border: 1px solid #fecaca;
                         }
 
                     </style>
@@ -1454,9 +1294,7 @@ public class App extends Application {
                                 </div>
 
                                 <div class="bubble">
-
                                     Hello! I am ready to help you.
-
                                 </div>
 
                             </div>
@@ -1517,15 +1355,12 @@ public class App extends Application {
 
                             message.innerHTML =
                                 '<div class="assistant-container">' +
-
                                     '<div class="sender">' +
                                         'Athena' +
                                     '</div>' +
-
                                     '<div class="bubble">' +
                                         html +
                                     '</div>' +
-
                                 '</div>';
 
                             chat.appendChild(message);
@@ -1567,15 +1402,12 @@ public class App extends Application {
 
                             message.innerHTML =
                                 '<div class="assistant-container">' +
-
                                     '<div class="sender">' +
                                         'Athena Error' +
                                     '</div>' +
-
                                     '<div class="bubble">' +
                                         escapeHtml(text) +
                                     '</div>' +
-
                                 '</div>';
 
                             chat.appendChild(message);
@@ -1600,7 +1432,8 @@ public class App extends Application {
                             const textarea =
                                 document.createElement("textarea");
 
-                            textarea.value = code;
+                            textarea.value =
+                                code;
 
                             document.body.appendChild(
                                 textarea);
@@ -2030,15 +1863,17 @@ public class App extends Application {
                                             if (models.contains(
                                                     selectedModel)) {
 
-                                                modelSelector.setValue(
-                                                        selectedModel);
+                                                modelSelector
+                                                        .setValue(
+                                                                selectedModel);
 
                                             } else if (!models.isEmpty()) {
 
                                                 selectedModel = models.get(0);
 
-                                                modelSelector.setValue(
-                                                        selectedModel);
+                                                modelSelector
+                                                        .setValue(
+                                                                selectedModel);
                                             }
                                         });
 
@@ -2048,7 +1883,6 @@ public class App extends Application {
                                         "Failed to parse models: " +
                                                 e.getMessage());
                             }
-
                         })
 
                 .exceptionally(
@@ -2133,10 +1967,11 @@ public class App extends Application {
                                             sessionIds.addAll(
                                                     newIds);
 
-                                            conversationList.setItems(
-                                                    FXCollections
-                                                            .observableArrayList(
-                                                                    titles));
+                                            conversationList
+                                                    .setItems(
+                                                            FXCollections
+                                                                    .observableArrayList(
+                                                                            titles));
 
                                             int currentIndex = sessionIds.indexOf(
                                                     sessionId);
@@ -2158,7 +1993,6 @@ public class App extends Application {
 
                                 e.printStackTrace();
                             }
-
                         })
 
                 .exceptionally(
@@ -2254,12 +2088,14 @@ public class App extends Application {
 
                                             sessionId = id;
 
-                                            if (!sessionModel.isBlank()) {
+                                            if (!sessionModel
+                                                    .isBlank()) {
 
                                                 selectedModel = sessionModel;
 
-                                                modelSelector.setValue(
-                                                        sessionModel);
+                                                modelSelector
+                                                        .setValue(
+                                                                sessionModel);
                                             }
 
                                             displaySession(
@@ -2277,7 +2113,6 @@ public class App extends Application {
 
                                 e.printStackTrace();
                             }
-
                         })
 
                 .exceptionally(
