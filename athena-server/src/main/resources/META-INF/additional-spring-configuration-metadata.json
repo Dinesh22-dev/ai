@@ -4,6 +4,26 @@
             "name": "ollama.url",
             "type": "java.lang.String",
             "description": "A description for 'ollama.url'"
+        },
+        {
+            "name": "athena.storage.attachments",
+            "type": "java.lang.String",
+            "description": "A description for 'athena.storage.attachments'"
+        },
+        {
+            "name": "ollama.text-model",
+            "type": "java.lang.String",
+            "description": "A description for 'ollama.text-model'"
+        },
+        {
+            "name": "ollama.vision-model",
+            "type": "java.lang.String",
+            "description": "A description for 'ollama.vision-model'"
+        },
+        {
+            "name": "ollama.vision-models",
+            "type": "java.lang.String",
+            "description": "A description for 'ollama.vision-models'"
         }
     ]
 }
