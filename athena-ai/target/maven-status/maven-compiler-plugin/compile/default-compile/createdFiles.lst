@@ -1,7 +1,0 @@
-com\athena\ai\OllamaAiService.class
-com\athena\App.class
-com\athena\ai\ModelInfo.class
-com\athena\ai\OllamaClient.class
-com\athena\ai\AiService.class
-com\athena\ai\ChatSession.class
-com\athena\ai\ChatMessage.class
